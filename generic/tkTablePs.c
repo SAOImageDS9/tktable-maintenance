@@ -1,4 +1,4 @@
-/* 
+/*
  * tkTablePs.c --
  *
  *	This module implements postscript output for table widgets.
@@ -64,7 +64,7 @@ typedef struct TkPostscriptInfo {
 				 * NULL means return Postscript info as
 				 * result. Malloc'ed. */
   char *channelName;		/* If -channel is specified, the name of
-                                 * the channel to use. */
+				 * the channel to use. */
   Tcl_Channel chan;		/* Open channel corresponding to fileName. */
   Tcl_HashTable fontTable;	/* Hash table containing names of all font
 				 * families used in output.  The hash table
@@ -80,41 +80,41 @@ typedef struct TkPostscriptInfo {
 
 static Tk_ConfigSpec configSpecs[] = {
   {TK_CONFIG_STRING, "-colormap", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, colorVar), 0},
+	offsetof(TkPostscriptInfo, colorVar), 0},
   {TK_CONFIG_STRING, "-colormode", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, colorMode), 0},
+	offsetof(TkPostscriptInfo, colorMode), 0},
   {TK_CONFIG_STRING, "-file", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, fileName), 0},
+	offsetof(TkPostscriptInfo, fileName), 0},
   {TK_CONFIG_STRING, "-channel", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, channelName), 0},
+	offsetof(TkPostscriptInfo, channelName), 0},
   {TK_CONFIG_STRING, "-first", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, first), 0},
+	offsetof(TkPostscriptInfo, first), 0},
   {TK_CONFIG_STRING, "-fontmap", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, fontVar), 0},
+	offsetof(TkPostscriptInfo, fontVar), 0},
   {TK_CONFIG_PIXELS, "-height", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, height), 0},
+	offsetof(TkPostscriptInfo, height), 0},
   {TK_CONFIG_STRING, "-last", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, last), 0},
+	offsetof(TkPostscriptInfo, last), 0},
   {TK_CONFIG_ANCHOR, "-pageanchor", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, pageAnchor), 0},
+	offsetof(TkPostscriptInfo, pageAnchor), 0},
   {TK_CONFIG_STRING, "-pageheight", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, pageHeightString), 0},
+	offsetof(TkPostscriptInfo, pageHeightString), 0},
   {TK_CONFIG_STRING, "-pagewidth", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, pageWidthString), 0},
+	offsetof(TkPostscriptInfo, pageWidthString), 0},
   {TK_CONFIG_STRING, "-pagex", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, pageXString), 0},
+	offsetof(TkPostscriptInfo, pageXString), 0},
   {TK_CONFIG_STRING, "-pagey", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, pageYString), 0},
+	offsetof(TkPostscriptInfo, pageYString), 0},
   {TK_CONFIG_BOOLEAN, "-rotate", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, rotate), 0},
+	offsetof(TkPostscriptInfo, rotate), 0},
   {TK_CONFIG_PIXELS, "-width", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, width), 0},
+	offsetof(TkPostscriptInfo, width), 0},
   {TK_CONFIG_PIXELS, "-x", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, x), 0},
+	offsetof(TkPostscriptInfo, x), 0},
   {TK_CONFIG_PIXELS, "-y", (char *) NULL, (char *) NULL, "",
-   Tk_Offset(TkPostscriptInfo, y), 0},
+	offsetof(TkPostscriptInfo, y), 0},
   {TK_CONFIG_END, (char *) NULL, (char *) NULL, (char *) NULL,
-   (char *) NULL, 0, 0}
+	(char *) NULL, 0, 0}
 };
 
 /*
@@ -128,7 +128,7 @@ static Tk_ConfigSpec configSpecs[] = {
  * Comments, and stuff pertaining to stipples and other unused entities
  * have been removed
  */
-static CONST char * CONST  prolog[]= {
+static const char * const  prolog[]= {
 	/* Start of part 1 */
 	"%%BeginProlog\n\
 50 dict begin\n\
@@ -377,30 +377,28 @@ systemdict /ISOLatin1Encoding known not {\n\
  * Forward declarations for procedures defined later in this file:
  */
 
-static int	GetPostscriptPoints _ANSI_ARGS_((Tcl_Interp *interp,
-			char *string, double *doublePtr));
-int		Tk_TablePsFont _ANSI_ARGS_((Tcl_Interp *interp,
-			Table *tablePtr, Tk_Font tkfont));
-int		Tk_TablePsColor _ANSI_ARGS_((Tcl_Interp *interp,
-			Table *tablePtr, XColor *colorPtr));
-static int	TextToPostscript _ANSI_ARGS_((Tcl_Interp *interp,
+static int	GetPostscriptPoints(Tcl_Interp *interp,
+			char *string, double *doublePtr);
+int		Tk_TablePsFont(Tcl_Interp *interp,
+			Table *tablePtr, Tk_Font tkfont);
+int		Tk_TablePsColor(Tcl_Interp *interp,
+			Table *tablePtr, XColor *colorPtr);
+static int	TextToPostscript(Tcl_Interp *interp,
 			Table *tablePtr, TableTag *tagPtr, int tagX, int tagY,
 			int width, int height, int row, int col,
-			Tk_TextLayout textLayout));
+			Tk_TextLayout textLayout);
 
 /*
  * Tcl could really use some more convenience routines...
  * This is just Tcl_DStringAppend for multiple lines, including
  * the full text of each line
  */
-void
-Tcl_DStringAppendAll TCL_VARARGS_DEF(Tcl_DString *, arg1)
-{
+void Tcl_DStringAppendAll(Tcl_DString *dstringPtr, ...) {
     va_list argList;
     Tcl_DString *dstringPtr;
     char *string;
 
-    dstringPtr = TCL_VARARGS_START(Tcl_DString *, arg1, argList);
+    va_start(argList, dstringPtr);
     while ((string = va_arg(argList, char *)) != NULL) {
       Tcl_DStringAppend(dstringPtr, string, -1);
     }
@@ -425,21 +423,18 @@ Tcl_DStringAppendAll TCL_VARARGS_DEF(Tcl_DString *, arg1)
  *--------------------------------------------------------------
  */
 
-    /* ARGSUSED */
-int
-Table_PostscriptCmd(clientData, interp, objc, objv)
-     ClientData clientData;	/* Information about table widget. */
-     Tcl_Interp *interp;	/* Current interpreter. */
-     int objc;			/* Number of argument objects. */
-     Tcl_Obj *CONST objv[];
-{
+int Table_PostscriptCmd(
+     ClientData clientData,	/* Information about table widget. */
+     Tcl_Interp *interp,	/* Current interpreter. */
+     int objc,			/* Number of argument objects. */
+     Tcl_Obj *const objv[]) {
 #ifdef _WIN32
     /*
      * At the moment, it just doesn't like this code...
      */
     return TCL_OK;
 #else
-    register Table *tablePtr = (Table *) clientData;
+    Table *tablePtr = (Table *) clientData;
     TkPostscriptInfo psInfo, *oldInfoPtr;
     int result;
     int row, col, firstRow, firstCol, lastRow, lastCol;
@@ -447,7 +442,7 @@ Table_PostscriptCmd(clientData, interp, objc, objv)
     int x0, y0, w0, h0, xn, yn, wn, hn;
     int x, y, w, h, i;
 #define STRING_LENGTH 400
-    char string[STRING_LENGTH+1], *p, **argv;
+    char string[STRING_LENGTH+1], *p;
     size_t length;
     int deltaX = 0, deltaY = 0;	/* Offset of lower-left corner of area to
 				 * be marked up, measured in table units
@@ -457,7 +452,7 @@ Table_PostscriptCmd(clientData, interp, objc, objv)
 				 * warnings. */
     Tcl_HashSearch search;
     Tcl_HashEntry *hPtr;
-    CONST char * CONST *chunk;
+    const char * const *chunk;
     Tk_TextLayout textLayout = NULL;
     char *value;
     int rowHeight, total, *colWidths, iW, iH;
@@ -506,17 +501,10 @@ Table_PostscriptCmd(clientData, interp, objc, objv)
     Tcl_InitHashTable(&psInfo.fontTable, TCL_STRING_KEYS);
 
     /*
-     * The magic StringifyObjects
+     * Config widget
      */
-    argv = (char **) ckalloc((objc + 1) * sizeof(char *));
-    for (i = 0; i < objc; i++)
-	argv[i] = Tcl_GetString(objv[i]);
-    argv[i] = NULL;
-
-    result = Tk_ConfigureWidget(interp, tablePtr->tkwin, configSpecs,
-				objc-2, argv+2, (char *) &psInfo,
-				TK_CONFIG_ARGV_ONLY);
-    if (result != TCL_OK) {
+    if (Tk_ConfigureWidget(interp, tablePtr->tkwin, configSpecs,
+	objc-2, (void *) (objv+2), (char *) &psInfo, TK_CONFIG_OBJS) != TCL_OK) {
 	goto cleanup;
     }
 
@@ -931,7 +919,6 @@ Table_PostscriptCmd(clientData, interp, objc, objv)
    */
 
 cleanup:
-    ckfree((char *) argv);
     Tcl_DStringResult(interp, &postscript);
     Tcl_DStringFree(&postscript);
     Tcl_DStringFree(&buffer);
@@ -999,13 +986,12 @@ cleanup:
  *--------------------------------------------------------------
  */
 
-int
-Tk_TablePsColor(interp, tablePtr, colorPtr)
-     Tcl_Interp *interp;		/* Interpreter for returning Postscript
+int Tk_TablePsColor(
+     Tcl_Interp *interp,		/* Interpreter for returning Postscript
 					 * or error message. */
-     Table *tablePtr;			/* Information about table. */
-     XColor *colorPtr;			/* Information about color. */
-{
+     Table *tablePtr,			/* Information about table. */
+     XColor *colorPtr) {		/* Information about color. */
+
     TkPostscriptInfo *psInfoPtr = tablePtr->psInfoPtr;
     int tmp;
     double red, green, blue;
@@ -1076,14 +1062,13 @@ Tk_TablePsColor(interp, tablePtr, colorPtr)
  *--------------------------------------------------------------
  */
 
-int
-Tk_TablePsFont(interp, tablePtr, tkfont)
-     Tcl_Interp *interp;		/* Interpreter for returning Postscript
+int Tk_TablePsFont(
+     Tcl_Interp *interp,		/* Interpreter for returning Postscript
 					 * or error message. */
-     Table *tablePtr;			/* Information about table. */
-     Tk_Font tkfont;			/* Information about font in which text
+     Table *tablePtr,			/* Information about table. */
+     Tk_Font tkfont) {			/* Information about font in which text
 					 * is to be printed. */
-{
+
     TkPostscriptInfo *psInfoPtr = tablePtr->psInfoPtr;
     char *end;
     char pointString[TCL_INTEGER_SPACE];
@@ -1097,7 +1082,7 @@ Tk_TablePsFont(interp, tablePtr, tkfont)
      */
 
     Tcl_DStringInit(&ds);
-    
+
     if (psInfoPtr->fontVar != NULL) {
 	char *list, **argv;
 	int objc;
@@ -1124,11 +1109,11 @@ Tk_TablePsFont(interp, tablePtr, tkfont)
 
 	    Tcl_DStringAppend(&ds, argv[0], -1);
 	    points = (int) size;
-	    
+
 	    ckfree((char *) argv);
 	    goto findfont;
 	}
-    } 
+    }
 
     points = Tk_PostscriptFontName(tkfont, &ds);
 
@@ -1163,12 +1148,11 @@ findfont:
  *--------------------------------------------------------------
  */
 
-static int
-GetPostscriptPoints(interp, string, doublePtr)
-     Tcl_Interp *interp;		/* Use this for error reporting. */
-     char *string;		/* String describing a screen distance. */
-     double *doublePtr;		/* Place to store converted result. */
-{
+static int GetPostscriptPoints(
+     Tcl_Interp *interp,		/* Use this for error reporting. */
+     char *string,		/* String describing a screen distance. */
+     double *doublePtr)	{	/* Place to store converted result. */
+
     char *end;
     double d;
 
@@ -1235,17 +1219,15 @@ GetPostscriptPoints(interp, string, doublePtr)
  *--------------------------------------------------------------
  */
 
-static int
-TextToPostscript(interp, tablePtr, tagPtr, tagX, tagY, width, height,
-		 row, col, textLayout)
-     Tcl_Interp *interp;	/* Leave Postscript or error message here. */
-     Table *tablePtr;		/* Information about overall canvas. */
-     TableTag *tagPtr;		/*  */
-     int tagX, tagY;		/*  */
-     int width, height;		/*  */
-     int row, col;		/*  */
-     Tk_TextLayout textLayout;	/*  */
-{
+static int TextToPostscript(
+     Tcl_Interp *interp,	 /* Leave Postscript or error message here. */
+     Table *tablePtr,		 /* Information about overall canvas. */
+     TableTag *tagPtr,		 /*  */
+     int tagX, int tagY,	 /*  */
+     int width, int height,	 /*  */
+     int row, int col,		 /*  */
+     Tk_TextLayout textLayout) { /*  */
+
     int x, y;
     Tk_FontMetrics fm;
     char *justify;

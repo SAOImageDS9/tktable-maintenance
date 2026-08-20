@@ -4,14 +4,11 @@ dnl	generate the file "configure", which is run during Tcl installation
 dnl	to configure the system for the local environment.
 
 #-----------------------------------------------------------------------
-# Sample configure.ac for Tcl Extensions.  The only places you should
-# need to modify this file are marked by the string __CHANGE__
+# This is the configure.ac file for the TkTable extension.  The only places
+# you should need to modify this file are marked by the string __CHANGE__.
 #-----------------------------------------------------------------------
 
 #-----------------------------------------------------------------------
-# __CHANGE__
-# Set your package name and version numbers here.
-#
 # This initializes the environment with PACKAGE_NAME and PACKAGE_VERSION
 # set as provided.  These will also be added as -D defs in your Makefile
 # so you can encode the package version directly into the source files.
@@ -19,7 +16,7 @@ dnl	to configure the system for the local environment.
 # so that we create the export library with the dll.
 #-----------------------------------------------------------------------
 
-AC_INIT([tktable], [2.10])
+AC_INIT([Tktable],[2.13])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -27,7 +24,7 @@ AC_INIT([tktable], [2.10])
 # as well as PKG_LIB_FILE and PKG_STUB_LIB_FILE.
 #--------------------------------------------------------------------
 
-TEA_INIT()
+TEA_INIT
 
 AC_CONFIG_AUX_DIR(tclconfig)
 
@@ -61,8 +58,14 @@ TEA_PREFIX
 
 TEA_SETUP_COMPILER
 
+#--------------------------------------------------------------------
+# Integer pointer types used by the (U)INT2PTR / PTR2(U)INT macros.
+#--------------------------------------------------------------------
+
+AC_TYPE_INTPTR_T
+AC_TYPE_UINTPTR_T
+
 #-----------------------------------------------------------------------
-# __CHANGE__
 # Specify the C source files to compile in TEA_ADD_SOURCES,
 # public headers that need to be installed in TEA_ADD_HEADERS,
 # stub library C source files to compile in TEA_ADD_STUB_SOURCES,
@@ -74,15 +77,13 @@ TEA_SETUP_COMPILER
 TEA_ADD_SOURCES([tkTable.c tkTableWin.c tkTableTag.c tkTableEdit.c
 		 tkTableCell.c tkTableCellSort.c tkTableCmds.c tkTableUtil.c])
 TEA_ADD_HEADERS([])
-TEA_ADD_INCLUDES([-I. -I${srcdir}/generic])
+TEA_ADD_INCLUDES([])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
-TEA_ADD_TCL_SOURCES([library/tkTable.tcl library/tktable.py])
+TEA_ADD_TCL_SOURCES([library/tkTable.tcl library/tktable.py license.txt README.txt])
 
 #--------------------------------------------------------------------
-# __CHANGE__
-#
 # You can add more files to clean if your extension creates any extra
 # files by extending CLEANFILES.
 # Add pkgIndex.tcl if it is generated in the Makefile instead of ./configure
@@ -92,21 +93,17 @@ TEA_ADD_TCL_SOURCES([library/tkTable.tcl library/tktable.py])
 # TEA_ADD_* any platform specific compiler/build info here.
 #--------------------------------------------------------------------
 
-#CLEANFILES="$CLEANFILES pkgIndex.tcl"
+TEA_ADD_CLEANFILES([pkgIndex.tcl tkTable.tcl.h tkTableUuid.h])
+
 if test "${TEA_PLATFORM}" = "windows" ; then
-    # Ensure no empty if clauses
-    :
-    #TEA_ADD_SOURCES([win/winFile.c])
-    #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+    AC_DEFINE(BUILD_Tktable)
+    TEA_ADD_CLEANFILES([*.lib *.dll *.exp *.ilk *.pdb vc*.pch])
 else
-    # Ensure no empty else clauses
-    :
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
+    TEA_ADD_CLEANFILES([*.so])
 fi
+AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
-# __CHANGE__
 # Choose which headers you need.  Extension authors should try very
 # hard to only rely on the Tcl public header files.  Internal headers
 # contain private data structures and are subject to change without
@@ -150,6 +147,16 @@ TEA_CONFIG_CFLAGS
 TEA_ENABLE_SYMBOLS
 
 #--------------------------------------------------------------------
+# Everyone should be linking against the Tcl stub library.  If you
+# can't for some reason, remove this definition.  If you aren't using
+# stubs, you also need to modify the SHLIB_LD_LIBS setting below to
+# link against the non-stubbed Tcl library.  Add Tk too if necessary.
+#--------------------------------------------------------------------
+
+AC_DEFINE(USE_TCL_STUBS)
+AC_DEFINE(USE_TK_STUBS)
+
+#--------------------------------------------------------------------
 # This macro generates a line to use when building a library.  It
 # depends on values set by the TEA_ENABLE_SHARED, TEA_ENABLE_SYMBOLS,
 # and TEA_LOAD_TCLCONFIG macros above.
@@ -172,8 +179,14 @@ TEA_PROG_WISH
 # Setup a *Config.sh.in configuration file.
 #--------------------------------------------------------------------
 
-TEA_EXPORT_CONFIG([tktable])
+TEA_EXPORT_CONFIG([Tktable])
 #AC_SUBST(SAMPLE_VAR)
+
+# -------------------------------------------------------------------
+# Find a usable dtplite (from tcllib) to use in document generation.
+# -------------------------------------------------------------------
+
+TEA_PROG_DTPLITE
 
 #--------------------------------------------------------------------
 # Specify files to substitute AC variables in. You may alternatively
@@ -181,12 +194,11 @@ TEA_EXPORT_CONFIG([tktable])
 # substituting the AC variables in. Include these here.
 #--------------------------------------------------------------------
 
-AC_CONFIG_FILES([Makefile pkgIndex.tcl])
-AC_CONFIG_FILES([tktableConfig.sh])
+AC_CONFIG_FILES([Makefile pkgIndex.tcl TktableConfig.sh])
 
 #--------------------------------------------------------------------
 # Finally, substitute all of the various values into the files
 # specified with AC_CONFIG_FILES.
 #--------------------------------------------------------------------
 
-AC_OUTPUT()
+AC_OUTPUT

@@ -1,4 +1,4 @@
-/* 
+/*
  * tkTableCell.c --
  *
  *	This module implements cell sort functions for table
@@ -43,74 +43,6 @@ typedef struct SortElement {
 					 * NULL for end of list. */
 } SortElement;
 
-static int		TableSortCompareProc _ANSI_ARGS_((CONST VOID *first,
-							  CONST VOID *second));
-static SortElement *    MergeSort _ANSI_ARGS_((SortElement *headPt));
-static SortElement *    MergeLists _ANSI_ARGS_((SortElement *leftPtr,
-						SortElement *rightPtr));
-static int		DictionaryCompare _ANSI_ARGS_((char *left,
-						       char *right));
-
-/*
- *----------------------------------------------------------------------
- *
- * TableSortCompareProc --
- *	This procedure is invoked by qsort to determine the proper
- *	ordering between two elements.
- *
- * Results:
- *	< 0 means first is "smaller" than "second", > 0 means "first"
- *	is larger than "second", and 0 means they should be treated
- *	as equal.
- *
- * Side effects:
- *	None, unless a user-defined comparison command does something
- *	weird.
- *
- *----------------------------------------------------------------------
- */
-static int
-TableSortCompareProc(first, second)
-    CONST VOID *first, *second;		/* Elements to be compared. */
-{
-    char *str1 = *((char **) first);
-    char *str2 = *((char **) second);
-
-    return DictionaryCompare(str1, str2);
-}
-
-/*
- *----------------------------------------------------------------------
- *
- * TableCellSort --
- *	Sort a list of table cell elements (of form row,col)
- *
- * Results:
- *	Returns the sorted list of elements.  Because Tcl_Merge allocs
- *	the space for result, it must later be Tcl_Free'd by caller.
- *
- * Side effects:
- *	Behaviour undefined for ill-formed input list of elements.
- *
- *----------------------------------------------------------------------
- */
-char *
-TableCellSort(Table *tablePtr, char *str)
-{
-    int listArgc;
-    CONST84 char **listArgv;
-    char *result;
-
-    if (Tcl_SplitList(tablePtr->interp, str, &listArgc, &listArgv) != TCL_OK) {
-	return str;
-    }
-    /* Thread safety: qsort is reportedly not thread-safe... */
-    qsort((VOID *) listArgv, (size_t) listArgc, sizeof (char *),
-	  TableSortCompareProc);
-    result = Tcl_Merge(listArgc, listArgv);
-    ckfree((char *) listArgv);
-    return result;
-}
 
 /*
  *----------------------------------------------------------------------
@@ -136,10 +68,9 @@ TableCellSort(Table *tablePtr, char *str)
  *----------------------------------------------------------------------
  */
 
-static int
-DictionaryCompare(left, right)
-    char *left, *right;          /* The strings to compare */
-{
+static int DictionaryCompare(
+    char *left, char *right) {         /* The strings to compare */
+
     int diff, zeros;
     int secondaryDiff = 0;
 
@@ -200,36 +131,93 @@ DictionaryCompare(left, right)
 	    }
 	    continue;
 	}
-        diff = UCHAR(*left) - UCHAR(*right);
-        if (diff) {
-            if (isupper(UCHAR(*left)) && islower(UCHAR(*right))) {
-                diff = UCHAR(tolower(*left)) - UCHAR(*right);
-                if (diff) {
+	diff = UCHAR(*left) - UCHAR(*right);
+	if (diff) {
+	    if (isupper(UCHAR(*left)) && islower(UCHAR(*right))) {
+		diff = UCHAR(tolower(*left)) - UCHAR(*right);
+		if (diff) {
 		    return diff;
-                } else if (secondaryDiff == 0) {
+		} else if (secondaryDiff == 0) {
 		    secondaryDiff = -1;
-                }
-            } else if (isupper(UCHAR(*right)) && islower(UCHAR(*left))) {
-                diff = UCHAR(*left) - UCHAR(tolower(UCHAR(*right)));
-                if (diff) {
+		}
+	    } else if (isupper(UCHAR(*right)) && islower(UCHAR(*left))) {
+		diff = UCHAR(*left) - UCHAR(tolower(UCHAR(*right)));
+		if (diff) {
 		    return diff;
-                } else if (secondaryDiff == 0) {
+		} else if (secondaryDiff == 0) {
 		    secondaryDiff = 1;
-                }
-            } else {
-                return diff;
-            }
-        }
-        if (*left == 0) {
+		}
+	    } else {
+		return diff;
+	    }
+	}
+	if (*left == 0) {
 	    break;
 	}
-        left++;
-        right++;
+	left++;
+	right++;
     }
     if (diff == 0) {
 	diff = secondaryDiff;
     }
     return diff;
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TableSortCompareProc --
+ *	This procedure is invoked by qsort to determine the proper
+ *	ordering between two elements.
+ *
+ * Results:
+ *	< 0 means first is "smaller" than "second", > 0 means "first"
+ *	is larger than "second", and 0 means they should be treated
+ *	as equal.
+ *
+ * Side effects:
+ *	None, unless a user-defined comparison command does something
+ *	weird.
+ *
+ *----------------------------------------------------------------------
+ */
+static int TableSortCompareProc(
+    const void *first, const void *second) {		/* Elements to be compared. */
+
+    char *str1 = *((char **) first);
+    char *str2 = *((char **) second);
+
+    return DictionaryCompare(str1, str2);
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
+ * TableCellSort --
+ *	Sort a list of table cell elements (of form row,col)
+ *
+ * Results:
+ *	Returns the sorted list of elements.  Because Tcl_Merge allocs
+ *	the space for result, it must later be Tcl_Free'd by caller.
+ *
+ * Side effects:
+ *	Behaviour undefined for ill-formed input list of elements.
+ *
+ *----------------------------------------------------------------------
+ */
+char * TableCellSort(Table *tablePtr, char *str) {
+    Tcl_Size listArgc;
+    const char **listArgv;
+    char *result;
+
+    if (Tcl_SplitList(tablePtr->interp, str, &listArgc, &listArgv) != TCL_OK) {
+	return str;
+    }
+    /* Thread safety: qsort is reportedly not thread-safe... */
+    qsort((void *) listArgv, (size_t) listArgc, sizeof (char *), TableSortCompareProc);
+    result = Tcl_Merge(listArgc, listArgv);
+    ckfree((char *) listArgv);
+    return result;
 }
 
 /*
@@ -250,24 +238,21 @@ DictionaryCompare(left, right)
  *----------------------------------------------------------------------
  */
 
-static SortElement *
-MergeLists(leftPtr, rightPtr)
-    SortElement *leftPtr;               /* First list to be merged; may be
-					 * NULL. */
-    SortElement *rightPtr;              /* Second list to be merged; may be
-					 * NULL. */
-{
+static SortElement * MergeLists(
+    SortElement *leftPtr,              /* First list to be merged; may be NULL. */
+    SortElement *rightPtr) {           /* Second list to be merged; may be NULL. */
+
     SortElement *headPtr;
     SortElement *tailPtr;
 
     if (leftPtr == NULL) {
-        return rightPtr;
+	return rightPtr;
     }
     if (rightPtr == NULL) {
-        return leftPtr;
+	return leftPtr;
     }
     if (DictionaryCompare(Tcl_GetString(leftPtr->objPtr),
-			  Tcl_GetString(rightPtr->objPtr)) > 0) {
+		Tcl_GetString(rightPtr->objPtr)) > 0) {
 	tailPtr = rightPtr;
 	rightPtr = rightPtr->nextPtr;
     } else {
@@ -277,7 +262,7 @@ MergeLists(leftPtr, rightPtr)
     headPtr = tailPtr;
     while ((leftPtr != NULL) && (rightPtr != NULL)) {
 	if (DictionaryCompare(Tcl_GetString(leftPtr->objPtr),
-			      Tcl_GetString(rightPtr->objPtr)) > 0) {
+		Tcl_GetString(rightPtr->objPtr)) > 0) {
 	    tailPtr->nextPtr = rightPtr;
 	    tailPtr = rightPtr;
 	    rightPtr = rightPtr->nextPtr;
@@ -313,10 +298,8 @@ MergeLists(leftPtr, rightPtr)
  *----------------------------------------------------------------------
  */
 
-static SortElement *
-MergeSort(headPtr)
-    SortElement *headPtr;               /* First element on the list */
-{
+static SortElement * MergeSort(
+    SortElement *headPtr) {            /* First element on the list */
     /*
      * The subList array below holds pointers to temporary lists built
      * during the merge sort.  Element i of the array holds a list of
@@ -329,7 +312,7 @@ MergeSort(headPtr)
     int i;
 
     for(i = 0; i < NUM_LISTS; i++){
-        subList[i] = NULL;
+	subList[i] = NULL;
     }
     while (headPtr != NULL) {
 	elementPtr = headPtr;
@@ -346,7 +329,7 @@ MergeSort(headPtr)
     }
     elementPtr = NULL;
     for (i = 0; i < NUM_LISTS; i++){
-        elementPtr = MergeLists(subList[i], elementPtr);
+	elementPtr = MergeLists(subList[i], elementPtr);
     }
     return elementPtr;
 }
@@ -366,18 +349,17 @@ MergeSort(headPtr)
  *
  *----------------------------------------------------------------------
  */
-Tcl_Obj *
-TableCellSortObj(Tcl_Interp *interp, Tcl_Obj *listObjPtr)
-{
+Tcl_Obj * TableCellSortObj(Tcl_Interp *interp, Tcl_Obj *listObjPtr) {
     int length, i;
+    Tcl_Size len;
     Tcl_Obj *sortedObjPtr, **listObjPtrs;
     SortElement *elementArray;
-    SortElement *elementPtr;        
+    SortElement *elementPtr;
 
-    if (Tcl_ListObjGetElements(interp, listObjPtr,
-			       &length, &listObjPtrs) != TCL_OK) {
+    if (Tcl_ListObjGetElements(interp, listObjPtr, &len, &listObjPtrs) != TCL_OK) {
 	return NULL;
     }
+    length = (int) len;
     if (length <= 0) {
 	return listObjPtr;
     }
@@ -390,7 +372,7 @@ TableCellSortObj(Tcl_Interp *interp, Tcl_Obj *listObjPtr)
     elementArray[length-1].nextPtr = NULL;
     elementPtr = MergeSort(elementArray);
     sortedObjPtr = Tcl_NewObj();
-    for (; elementPtr != NULL; elementPtr = elementPtr->nextPtr){
+    for (; elementPtr != NULL; elementPtr = elementPtr->nextPtr) {
 	Tcl_ListObjAppendElement(NULL, sortedObjPtr, elementPtr->objPtr);
     }
     ckfree((char*) elementArray);

@@ -1,15 +1,14 @@
-/* 
+/*
+ *----------------------------------------------------------------------
  * tkTable.h --
  *
- *	This is the header file for the module that implements
- *	table widgets for the Tk toolkit.
+ *	Macro and structure definitions
  *
  * Copyright (c) 1997-2002 Jeffrey Hobbs
  *
  * See the file "license.txt" for information on usage and redistribution
  * of this file, and for a DISCLAIMER OF ALL WARRANTIES.
- *
- * RCS: @(#) $Id: tkTable.h,v 1.2 2016/01/12 18:59:57 joye Exp $
+ *----------------------------------------------------------------------
  */
 
 #ifndef _TKTABLE_H_
@@ -18,89 +17,124 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#ifdef HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
 #include <tk.h>
-#ifdef MAC_TCL
-# include <Xatom.h>
-#else
-# include <X11/Xatom.h>
-#endif /* MAC_TCL */
+#include <X11/Xatom.h>
 
-#if (TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION == 0) /* Tcl8.0 stuff */
-#define Tcl_GetString(objPtr)	Tcl_GetStringFromObj(objPtr, (int *)NULL)
+/* Platform unique definitions */
+#ifdef MAC_OSX_TK
+#ifndef MAC_OSX_TCL
+#define MAC_OSX_TCL
+#endif
 #endif
 
-#if (TCL_MAJOR_VERSION > 8) || ((TCL_MAJOR_VERSION == 8) && (TCL_MINOR_VERSION >= 4))
-#   define HAVE_TCL84
+/* Windows needs to know which symbols to export. */
+#ifdef BUILD_Tktable
+#undef TCL_STORAGE_CLASS
+#define TCL_STORAGE_CLASS	DLLEXPORT
+#endif
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#undef WIN32_LEAN_AND_MEAN
+/* VC++ has an entry point called DllMain instead of DllEntryPoint */
+#if defined(_MSC_VER)
+#define DllEntryPoint DllMain
+#endif
+#endif
+
+/* Handle TCL 8.6 CONST changes */
+#ifndef CONST86
+#   if TCL_MAJOR_VERSION > 8
+#	define CONST86 const
+#   else
+#	define CONST86
+#   endif
 #endif
 
 /*
- * Tcl/Tk 8.4 introduced better CONST-ness in the APIs, but we use CONST84 in
- * some cases for compatibility with earlier Tcl headers to prevent warnings.
+ * Backwards compatibility for size type change
  */
-#ifndef CONST84
-#  define CONST84
+#if TCL_MAJOR_VERSION < 9 && TCL_MINOR_VERSION < 7
+    #include <limits.h>
+    #ifndef TCL_SIZE_MAX
+	#define TCL_SIZE_MAX INT_MAX
+    #endif
+
+    #define TCL_SIZE_MODIFIER ""
+    #define Tcl_GetSizeIntFromObj Tcl_GetIntFromObj
+    #define Tcl_NewSizeIntObj     Tcl_NewIntObj
+    #define Tcl_NewSizeIntFromObj Tcl_NewWideIntObj
 #endif
 
-/* This EXTERN declaration is needed for Tcl < 8.0.3 */
-#ifndef EXTERN
-# ifdef __cplusplus
-#  define EXTERN extern "C"
-# else
-#  define EXTERN extern
-# endif
-#endif
+/*
+ * Macros used to cast between pointers and integers (e.g. when storing an int
+ * in ClientData), on 64-bit architectures they avoid gcc warning about "cast
+ * to/from pointer from/to integer of different size".
+ */
 
-#ifdef TCL_STORAGE_CLASS
-# undef TCL_STORAGE_CLASS
-#endif
-#ifdef BUILD_Tktable
-# define TCL_STORAGE_CLASS DLLEXPORT
-#else
-# define TCL_STORAGE_CLASS DLLIMPORT
-#endif
-
-#ifdef WIN32
-#   define WIN32_LEAN_AND_MEAN
-#   include <windows.h>
-#   undef WIN32_LEAN_AND_MEAN
-/* VC++ has an entry point called DllMain instead of DllEntryPoint */
-#   if defined(_MSC_VER)
-#	define DllEntryPoint DllMain
+#if !defined(INT2PTR) && !defined(PTR2INT)
+#   if defined(HAVE_INTPTR_T) || defined(intptr_t)
+#	define INT2PTR(p) ((void*)(intptr_t)(p))
+#	define PTR2INT(p) ((int)(intptr_t)(p))
+#   else
+#	define INT2PTR(p) ((void*)(p))
+#	define PTR2INT(p) ((int)(p))
 #   endif
 #endif
-
-#if defined(WIN32) || defined(MAC_TCL) || defined(MAC_OSX_TK)
-/* XSync call defined in the internals for some reason */
-#   ifndef XSync
-#	define XSync(display, bool) {display->request++;}
+#if !defined(UINT2PTR) && !defined(PTR2UINT)
+#   if defined(HAVE_UINTPTR_T) || defined(uintptr_t)
+#	define UINT2PTR(p) ((void*)(uintptr_t)(p))
+#	define PTR2UINT(p) ((unsigned int)(uintptr_t)(p))
+#   else
+#	define UINT2PTR(p) ((void*)(p))
+#	define PTR2UINT(p) ((unsigned int)(p))
 #   endif
-#endif /* defn of XSync */
+#endif
 
 #ifndef NORMAL_BG
-#   ifdef WIN32
-#	define NORMAL_BG	"SystemButtonFace"
+#   ifdef _WIN32
+#	define NORMAL_BG	"SystemWindow"
+#	define NORMAL_FG	"SystemWindowText"
 #	define ACTIVE_BG	NORMAL_BG
+#	define ACTIVE_FG	NORMAL_FG
 #	define SELECT_BG	"SystemHighlight"
 #	define SELECT_FG	"SystemHighlightText"
-#	define DISABLED		"SystemDisabledText"
+#	define DISABLED_BG	NORMAL_BG
+#	define DISABLED_FG	"SystemDisabledText"
+#	define HIGHLIGHT_BG	NORMAL_BG
 #	define HIGHLIGHT	"SystemWindowFrame"
-#	define DEF_TABLE_FONT	"{MS Sans Serif} 8"
+#	define DEF_TABLE_FONT	"TkTextFont"
+#	define DEF_HEADER_FONT	"TkHeadingFont"
 #   elif defined(MAC_TCL) || defined(MAC_OSX_TK)
-#	define NORMAL_BG	"systemWindowBody"
-#	define ACTIVE_BG	"#ececec"
-#	define SELECT_BG	"systemHighlight"
-#	define SELECT_FG	"systemHighlightText"
-#	define DISABLED		"#a3a3a3"
-#	define HIGHLIGHT	"Black"
-#	define DEF_TABLE_FONT	"Helvetica 12"
+#	define NORMAL_BG	"systemTextBackgroundColor"
+#	define NORMAL_FG	"systemTextColor"
+#	define ACTIVE_BG	"systemWindowBackgroundColor"
+#	define ACTIVE_FG	NORMAL_FG
+#	define SELECT_BG	"systemSelectedTextBackgroundColor"
+#	define SELECT_FG	"systemSelectedTextColor"
+#	define DISABLED_BG	"systemTextBackgroundColor"
+#	define DISABLED_FG	"systemDisabledControlTextColor"
+#	define HIGHLIGHT_BG	NORMAL_BG
+#	define HIGHLIGHT	NORMAL_FG
+#	define DEF_TABLE_FONT	"TkTextFont"
+#	define DEF_HEADER_FONT	"TkHeadingFont"
 #   else
-#	define NORMAL_BG	"#d9d9d9"
-#	define ACTIVE_BG	"#fcfcfc"
+#	define NORMAL_BG	"white"
+#	define NORMAL_FG	"black"
+#	define ACTIVE_BG	"#ececec"
+#	define ACTIVE_FG	NORMAL_FG
 #	define SELECT_BG	"#c3c3c3"
-#	define SELECT_FG	"Black"
-#	define DISABLED		"#a3a3a3"
-#	define HIGHLIGHT	"Black"
-#	define DEF_TABLE_FONT	"Helvetica -12"
+#	define SELECT_FG	"black"
+#	define DISABLED_BG	NORMAL_BG
+#	define DISABLED_FG	"#a3a3a3"
+#	define HIGHLIGHT_BG	NORMAL_BG
+#	define HIGHLIGHT	NORMAL_FG
+#	define DEF_TABLE_FONT	"TkTextFont"
+#	define DEF_HEADER_FONT	"TkHeadingFont"
 #   endif
 #endif /* NORMAL_BG */
 
@@ -108,8 +142,8 @@
 #define MIN(A,B)	(((A)>(B))?(B):(A))
 #define BETWEEN(val,min,max)	( ((val)<(min)) ? (min) : \
 				( ((val)>(max)) ? (max) : (val) ) )
-#define CONSTRAIN(val,min,max)	if ((val) < (min)) { (val) = (min); } \
-				else if ((val) > (max)) { (val) = (max); }
+#define CONSTRAIN(val,min,max)	if ((val) < (min)) { (val) = MIN(min,max);} \
+				else if ((val) > (max)) { (val) = (max);}
 #define STREQ(s1, s2)	(strcmp((s1), (s2)) == 0)
 #define ARSIZE(A)	(sizeof(A)/sizeof(*A))
 #define INDEX_BUFSIZE	32		/* max size of buffer for indices */
@@ -389,6 +423,9 @@ typedef struct {
     int invalidX, invalidY, invalidWidth, invalidHeight;
     int seen[4];			/* see TableUndisplay */
 
+    int haveSelection;
+    Tcl_DString selection;
+
 #ifdef POSTSCRIPT
     /* Pointer to information used for generating Postscript for the canvas.
      * NULL means no Postscript is currently being generated. */
@@ -437,67 +474,63 @@ typedef struct TableEmbWindow {
 
 extern Tk_ConfigSpec tableSpecs[];
 
-extern void	EmbWinDisplay(Table *tablePtr, Drawable window,
-			TableEmbWindow *ewPtr, TableTag *tagPtr,
-			int x, int y, int width, int height);
-extern void	EmbWinUnmap(register Table *tablePtr,
-			int rlo, int rhi, int clo, int chi);
-extern void	EmbWinDelete(register Table *tablePtr, TableEmbWindow *ewPtr);
-extern int	Table_WinMove(register Table *tablePtr,
-			char *CONST srcPtr, char *CONST destPtr, int flags);
-extern int	Table_WinDelete(register Table *tablePtr, char *CONST idxPtr);
-extern int	Table_WindowCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern int	TableValidateChange(Table *tablePtr, int r,
-			int c, char *oldVal, char *newVal, int idx);
+extern void	EmbWinDisplay(Table *tablePtr, Drawable window, TableEmbWindow *ewPtr,
+			TableTag *tagPtr, int x, int y, int width, int height);
+extern void	EmbWinUnmap(Table *tablePtr, int rlo, int rhi, int clo, int chi);
+extern void	EmbWinDelete(Table *tablePtr, TableEmbWindow *ewPtr);
+extern int	Table_WinMove(Table *tablePtr, char *const srcPtr, char *const destPtr,
+			int flags);
+extern int	Table_WinDelete(Table *tablePtr, char *const idxPtr);
+extern int	Table_WindowCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
+extern int	TableValidateChange(Table *tablePtr, int r, int c, char *oldVal,
+			char *newVal, int idx);
 extern void	TableLostSelection(ClientData clientData);
-extern void	TableSetActiveIndex(register Table *tablePtr);
+extern void	TableSetActiveIndex(Table *tablePtr);
 
 /*
  * HEADERS IN tkTableCmds.c
  */
 
 extern int	Table_ActivateCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_AdjustCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_BboxCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_BorderCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_ClearCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_CurselectionCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_CurvalueCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_GetCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_ScanCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_SeeCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_SelAnchorCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_SelClearCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_SelIncludesCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_SelSetCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 extern int	Table_ViewCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
 
 /*
  * HEADERS IN tkTableEdit.c
  */
 
 extern int	Table_EditCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern void	TableDeleteChars(register Table *tablePtr,
-			int idx, int count);
-extern void	TableInsertChars(register Table *tablePtr,
-			int idx, char *string);
+			Tcl_Interp *interp, int objc, Tcl_Obj *const objv[]);
+extern void	TableDeleteChars(Table *tablePtr, int idx, int count);
+extern void	TableInsertChars(Table *tablePtr, int idx, char *string);
 
 /*
  * HEADERS IN tkTableTag.c
@@ -505,77 +538,60 @@ extern void	TableInsertChars(register Table *tablePtr,
 
 extern TableTag *TableNewTag(Table *tablePtr);
 extern void	TableResetTag(Table *tablePtr, TableTag *tagPtr);
-extern void	TableMergeTag(Table *tablePtr, TableTag *baseTag,
-			TableTag *addTag);
+extern void	TableMergeTag(Table *tablePtr, TableTag *baseTag, TableTag *addTag);
 extern void	TableInvertTag(TableTag *baseTag);
-extern int	TableGetTagBorders(TableTag *tagPtr,
-			int *left, int *right, int *top, int *bottom);
-extern void	TableInitTags(Table *tablePtr);
-extern TableTag *FindRowColTag(Table *tablePtr,
-			int cell, int type);
-extern void	TableCleanupTag(Table *tablePtr,
-			TableTag *tagPtr);
-extern int	Table_TagCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
+extern int	TableGetTagBorders(TableTag *tagPtr, int *left, int *right, int *top,
+			int *bottom);
+extern int	TableInitTags(Tcl_Interp *interp, Table *tablePtr);
+extern TableTag *FindRowColTag(Table *tablePtr, int cell, int type);
+extern void	TableCleanupTag(Table *tablePtr, TableTag *tagPtr);
+extern int	Table_TagCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
 
 /*
  * HEADERS IN tkTableUtil.c
  */
 
 extern void	Table_ClearHashTable(Tcl_HashTable *hashTblPtr);
-extern int	TableOptionBdSet(ClientData clientData,
-			Tcl_Interp *interp, Tk_Window tkwin,
-			CONST84 char *value, char *widgRec, int offset);
-extern const char *	TableOptionBdGet(ClientData clientData,
-			Tk_Window tkwin, char *widgRec, int offset,
-			Tcl_FreeProc **freeProcPtr);
-extern int	TableTagConfigureBd(Table *tablePtr,
-			TableTag *tagPtr, char *oldValue, int nullOK);
-extern int	Cmd_OptionSet(ClientData clientData,
-			Tcl_Interp *interp,
-			Tk_Window unused, CONST84 char *value,
-			char *widgRec, int offset);
-extern const char *	Cmd_OptionGet(ClientData clientData,
-			Tk_Window unused, char *widgRec,
-			int offset, Tcl_FreeProc **freeProcPtr);
+extern int	TableOptionBdSet(ClientData clientData, Tcl_Interp *interp,
+			Tk_Window tkwin, const char *value, char *widgRec, Tcl_Size offset);
+extern CONST86 char *	TableOptionBdGet(ClientData clientData, Tk_Window tkwin, char *widgRec,
+			Tcl_Size offset, Tcl_FreeProc **freeProcPtr);
+extern int	TableTagConfigureBd(Table *tablePtr, TableTag *tagPtr, char *oldValue, int nullOK);
+extern int	Cmd_OptionSet(ClientData clientData, Tcl_Interp *interp, Tk_Window unused,
+			const char *value, char *widgRec, Tcl_Size offset);
+extern CONST86 char *	Cmd_OptionGet(ClientData clientData, Tk_Window unused, char *widgRec,
+			Tcl_Size offset, Tcl_FreeProc **freeProcPtr);
 
 /*
  * HEADERS IN tkTableCell.c
  */
 
-extern int	TableTrueCell(Table *tablePtr, int row, int col,
-					   int *trow, int *tcol);
-extern int	TableCellCoords(Table *tablePtr, int row,
-			int col, int *rx, int *ry, int *rw, int *rh);
-extern int	TableCellVCoords(Table *tablePtr, int row,
-			int col, int *rx, int *ry,
-			int *rw, int *rh, int full);
-extern void	TableWhatCell(register Table *tablePtr,
-			int x, int y, int *row, int *col);
-extern int	TableAtBorder(Table *tablePtr, int x, int y,
-			int *row, int *col);
+extern int	TableTrueCell(Table *tablePtr, int row, int col, int *trow, int *tcol);
+extern int	TableCellCoords(Table *tablePtr, int row, int col, int *rx, int *ry, int *rw,
+			int *rh);
+extern int	TableCellVCoords(Table *tablePtr, int row, int col, int *rx, int *ry, int *rw,
+			int *rh, int full);
+extern void	TableWhatCell(Table *tablePtr, int x, int y, int *row, int *col);
+extern int	TableAtBorder(Table *tablePtr, int x, int y, int *row, int *col);
 extern char *	TableGetCellValue(Table *tablePtr, int r, int c);
-extern int	TableSetCellValue(Table *tablePtr, int r, int c,
-			char *value);
-extern int    TableMoveCellValue(Table *tablePtr,
-			int fromr, int fromc, char *frombuf,
+extern int	TableSetCellValue(Table *tablePtr, int r, int c, char *value);
+extern int	TableMoveCellValue(Table *tablePtr, int fromr, int fromc, char *frombuf,
 			int tor, int toc, char *tobuf, int outOfBounds);
 
-extern int	TableGetIcursor(Table *tablePtr, char *arg,
-			int *posn);
+extern int	TableGetIcursor(Table *tablePtr, char *arg, int *posn);
 #define TableGetIcursorObj(tablePtr, objPtr, posnPtr) \
 	TableGetIcursor(tablePtr, Tcl_GetString(objPtr), posnPtr)
-extern int	TableGetIndex(register Table *tablePtr,
-			char *str, int *row_p, int *col_p);
+extern int	TableGetIndex(Table *tablePtr, char *str, int *row_p, int *col_p);
 #define TableGetIndexObj(tablePtr, objPtr, rowPtr, colPtr) \
 	TableGetIndex(tablePtr, Tcl_GetString(objPtr), rowPtr, colPtr)
-extern int	Table_SetCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern int	Table_HiddenCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern int	Table_SpanCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern void	TableSpanSanCheck(register Table *tablePtr);
+extern int	Table_SetCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
+extern int	Table_HiddenCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
+extern int	Table_SpanCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
+extern void	TableSpanSanCheck(Table *tablePtr);
 
 /*
  * HEADERS IN TKTABLECELLSORT
@@ -596,9 +612,9 @@ extern Tcl_Obj*	TableCellSortObj(Tcl_Interp *interp, Tcl_Obj *listObjPtr);
  */
 
 #ifdef POSTSCRIPT
-extern int	Table_PostscriptCmd(ClientData clientData,
-			Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]);
-extern void	Tcl_DStringAppendAllTCL_VARARGS(Tcl_DString *, arg1);
+extern int	Table_PostscriptCmd(ClientData clientData, Tcl_Interp *interp, int objc,
+			Tcl_Obj *const objv[]);
+extern void	Tcl_DStringAppendAll(Tcl_DString *, arg1, ...);
 #endif
 
 /*
@@ -608,18 +624,15 @@ extern void	Tcl_DStringAppendAllTCL_VARARGS(Tcl_DString *, arg1);
 EXTERN int Tktable_Init(Tcl_Interp *interp);
 EXTERN int Tktable_SafeInit(Tcl_Interp *interp);
 
-extern void	TableGetActiveBuf(register Table *tablePtr);
-extern void	ExpandPercents(Table *tablePtr, char *before,
-			int r, int c, char *oldVal, char *newVal, int idx,
-			Tcl_DString *dsPtr, int cmdType);
-extern void	TableInvalidate(Table *tablePtr, int x, int y,
-			int width, int height, int force);
-extern void	TableRefresh(register Table *tablePtr,
-			int arg1, int arg2, int mode);
+extern void	TableGetActiveBuf(Table *tablePtr);
+extern void	ExpandPercents(Table *tablePtr, char *before, int r, int c, char *oldVal,
+			char *newVal, Tcl_Size idx, Tcl_DString *dsPtr, int cmdType);
+extern void	TableInvalidate(Table *tablePtr, int x, int y, int width, int height, int force);
+extern void	TableRefresh(Table *tablePtr, int arg1, int arg2, int mode);
 extern void	TableGeometryRequest(Table *tablePtr);
-extern void	TableAdjustActive(register Table *tablePtr);
-extern void	TableAdjustParams(register Table *tablePtr);
-extern void	TableConfigCursor(register Table *tablePtr);
+extern void	TableAdjustActive(Table *tablePtr);
+extern void	TableAdjustParams(Table *tablePtr);
+extern void	TableConfigCursor(Table *tablePtr);
 extern void	TableAddFlash(Table *tablePtr, int row, int col);
 
 

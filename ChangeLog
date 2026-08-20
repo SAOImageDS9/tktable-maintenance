@@ -1,7 +1,53 @@
-2016-01-12 waj
+2026-08-20  Ken Glotfelty  <kglotfelty@cfa.harvard.edu>
 
-	* upgraded TEA to 3.9
-	* numerous compiler fixes for 64bit
+	* Released as Tktable version 2.13. This is a new fork,
+	continuing maintenance of the project for SAOImageDS9 after
+	the previous fork base (2.10) fell behind. Rather than porting
+	individual patches, this release wholesale adopts the newer
+	upstream 2.12 tree already vendored in the SAOImageDS9 source
+	tree (which brings native Tcl 9 support, Python bindings, and
+	an updated Windows build system), then bumps the version to
+	mark it as this fork's own release. Fossil SCM metadata
+	(.fossil-settings, manifest.uuid) from upstream was dropped and
+	replaced with an equivalent .gitignore.
+
+2013-04-18  Jeff Hobbs  <jeffh@ActiveState.com>
+
+	* generic/tkTable.c (TableValidateChange): don't call XSync on
+	* generic/tkTable.h (XSync): Win32 or OS X.  Removes need to check
+	function def, which changed to tkIntStubsPtr ref in later Tk 8.5.
+	Ref Tk bug 3541305
+
+2011-04-05  Jeff Hobbs  <jeffh@ActiveState.com>
+
+	* tests/tkTable.test, unix/tktable.spec, generic/version.h:
+	* win/makefile.vc, demos/loadtable.tcl: Update version to 2.11
+	* configure, configure.in, tclconfig/tcl.m4: Update to TEA 3.9
+	* Makefile.in: add valgrind targets
+
+	* generic/tkTable.c (TableDisplay): fix window clipping to use
+	large enough clip window.
+
+2010-08-05  Jeff Hobbs  <jeffh@ActiveState.com>
+
+	* generic/tkTable.h (CONSTRAIN): handle constraints where max<min.
+	[Bug 2672726] (becroft)
+
+	* win/makefile.vc (LIBS): add ""s where needed [Bug 2305395] (oehhar)
+	(VERSION): add VERSION var [Bug 2305448] (oehhar)
+
+	* library/tktable.py (Table.width): handle empty colum
+	(Table._tabsubst): improve substitutions [Bug 2293127] (ggpolo)
+	(ArrayVar): improve py integration [Bug 2333824] (ggpolo)
+	(Table.__init__): support TKTABLE_LIBRARY env var [Bug 2334490) (ggpolo)
+
+	* generic/tkTable.c (TableFetchSelection): significant performance
+	improvement in large table selection retrieval. [Bug 2901813] (cerney)
+
+2010-04-15  Jeff Hobbs  <jeffh@ActiveState.com>
+
+	* license.txt: update wording and clause reference in government
+	use clause to clarify license allowances.
 
 2008-11-14  Jeff Hobbs  <jeffh@ActiveState.com>
 
